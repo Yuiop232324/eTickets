@@ -1,80 +1,89 @@
-**REGION REQ002 - Open Evergreen Requisition Search
+**REGION REQ002 - Open and Verify Evergreen Requisition Search Form
 SET REQ002Succeeded TO False
 SET REQ002ErrorCode TO $''''''
 Folder.GetSpecialFolder SpecialFolder: Folder.SpecialFolder.DesktopDirectory SpecialFolderPath=> REQ002DesktopPath
 SET REQ002LogPath TO $'''%REQ002DesktopPath%\PH_HAIREX_1388_REQ002.log'''
 DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|START|MODE=WINDOWS_OCR'''
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|START|MODE=AUTHENTICATED_JOB_SEARCH_URL'''
 File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 
-# The UAT application is running in Windows Virtual Desktop.
-# Use visible-screen OCR and physical clicks; do not use browser DOM selectors or JavaScript.
+# This is the live Job/Requisition Search URL captured from the authenticated UAT session.
+# Navigate the existing iCIMSBrowser; never launch a second browser for this URL.
+SET iCIMSRequisitionSearchUrl TO $'''%iCIMSBaseUrl%/platform/icims2?module=AppSearchEngine&action=searchFrame&table=Job&jobTemplate=1&run=1&hashed=1762382495'''
 SET REQ002StepFailed TO False
 BLOCK
 ON BLOCK ERROR all
 SET REQ002StepFailed TO True
 END
-    UIAutomation.FocusWindow.FocusByInstanceOrHandle WindowInstance: iCIMSBrowser
-    WAIT 1
-    MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''Library''' IsRegEx: False WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002LibraryX Y=> REQ002LibraryY Width=> REQ002LibraryWidth Height=> REQ002LibraryHeight
-    MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
+    WebAutomation.GoToWebPage.GoToWebPage BrowserInstance: iCIMSBrowser Url: iCIMSRequisitionSearchUrl WaitForPageToLoadTimeout: 60
+    WAIT 5
+    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.URLAddress Details=> REQ002CurrentUrl
+    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002PageText
 END
 IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''LIBRARY_OCR_OR_CLICK_FAILED'''
+    SET REQ002ErrorCode TO $'''JOB_SEARCH_NAVIGATION_FAILED'''
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+
+# Reject Requisition Center, Access Denied, expired links, and every non-Job search page.
+IF Contains(REQ002CurrentUrl, $'''module=AppSearchEngine''', True) = False OR Contains(REQ002CurrentUrl, $'''table=Job''', True) = False THEN
+    SET REQ002ErrorCode TO $'''WRONG_URL_NOT_JOB_SEARCH'''
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+IF Contains(REQ002PageText, $'''Access Denied''', True) = True OR Contains(REQ002PageText, $'''Only Job Advertising Administrators''', True) = True THEN
+    SET REQ002ErrorCode TO $'''WRONG_PAGE_OR_ACCESS_DENIED'''
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+IF Contains(REQ002PageText, $'''Requisition Search''', True) = False OR Contains(REQ002PageText, $'''Job Search Results''', True) = False THEN
+    SET REQ002ErrorCode TO $'''JOB_SEARCH_PAGE_NOT_VERIFIED'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
 DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|LIBRARY_CLICKED|X=%REQ002LibraryX%|Y=%REQ002LibraryY%'''
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|JOB_SEARCH_PAGE_VERIFIED'''
 File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-WAIT 2
 
+# Open Search Form using its one visible label, then verify that the control changes to Hide Form.
 SET REQ002StepFailed TO False
 BLOCK
 ON BLOCK ERROR all
 SET REQ002StepFailed TO True
 END
     UIAutomation.FocusWindow.FocusByInstanceOrHandle WindowInstance: iCIMSBrowser
-    MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''Requisition''' IsRegEx: False WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002RequisitionX Y=> REQ002RequisitionY Width=> REQ002RequisitionWidth Height=> REQ002RequisitionHeight
+    MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''Search Form''' IsRegEx: False WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002SearchFormX Y=> REQ002SearchFormY Width=> REQ002SearchFormWidth Height=> REQ002SearchFormHeight
     MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
+    WAIT 3
+    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002PageTextAfterSearchFormClick
 END
 IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''REQUISITION_OCR_OR_CLICK_FAILED'''
+    SET REQ002ErrorCode TO $'''SEARCH_FORM_OCR_CLICK_OR_READ_FAILED'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|REQUISITION_CLICKED|X=%REQ002RequisitionX%|Y=%REQ002RequisitionY%'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-WAIT 5
-
-SET REQ002StepFailed TO False
-BLOCK
-ON BLOCK ERROR all
-SET REQ002StepFailed TO True
-END
-    UIAutomation.FocusWindow.FocusByInstanceOrHandle WindowInstance: iCIMSBrowser
-    MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''Search Form''' IsRegEx: False WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 30 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002SearchFormX Y=> REQ002SearchFormY Width=> REQ002SearchFormWidth Height=> REQ002SearchFormHeight
-    MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
-END
-IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''SEARCH_FORM_OCR_OR_CLICK_FAILED'''
+IF Contains(REQ002PageTextAfterSearchFormClick, $'''Hide Form''', True) = False THEN
+    SET REQ002ErrorCode TO $'''SEARCH_FORM_NOT_OPEN_AFTER_CLICK'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%|X=%REQ002SearchFormX%|Y=%REQ002SearchFormY%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SEARCH_FORM_CLICKED|X=%REQ002SearchFormX%|Y=%REQ002SearchFormY%'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 
 SET REQ002Succeeded TO True
 SET REQ002ErrorCode TO $''''''
 DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SUCCESS|SEARCH_FORM_OPENED'''
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SUCCESS|JOB_SEARCH_AND_FORM_VERIFIED'''
 File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 **ENDREGION
