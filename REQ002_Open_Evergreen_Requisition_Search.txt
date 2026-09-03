@@ -1,6 +1,38 @@
 **REGION REQ002 - Open Evergreen Requisition Search
-SET iCIMSRequisitionSearchUrl TO $'''https://teleperformance.icims.com/platform/icims2?module=AppSearchEngine&action=searchFrame&table=Job&jobTemplate=1&run=1&hashed=-908263111'''
-WebAutomation.LaunchEdge.LaunchEdge Url: iCIMSRequisitionSearchUrl ClearCache: False ClearCookies: False WindowState: WebAutomation.BrowserWindowState.Maximized WaitForPageToLoadTimeout: 60 Timeout: 60 PiPUserDataFolderMode: WebAutomation.PiPUserDataFolderModeEnum.AutomaticProfile TargetDesktop: $'''{\"DisplayName\":\"Local computer\",\"Route\":{\"ServerType\":\"Local\",\"ServerAddress\":\"\"},\"DesktopType\":\"local\"}''' BrowserInstance=> iCIMSBrowser
-    ON ERROR REPEAT 3 TIMES WAIT 5
+WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Button \'Library\'']) FOR 60
+WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Button \'Library\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
+    ON ERROR REPEAT 3 TIMES WAIT 3
+    END
+WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Requisition\'']) FOR 30
+WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Requisition\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
+    ON ERROR REPEAT 3 TIMES WAIT 3
+    END
+WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Search Form\'']) FOR 60
+WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Search Form\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
+    ON ERROR REPEAT 3 TIMES WAIT 3
     END
 **ENDREGION
+
+# [ControlRepository][PowerAutomateDesktop]
+
+{
+  "ControlRepositorySymbols": [
+    {
+      "IgnoreImagesOnSerialization": false,
+      "Repository": "{\"Screens\":[{\"Controls\":[{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Button\",\"InstanceId\":\"e6b82bd8-2f97-4a73-bda4-2b32089bce77\",\"Name\":\"Button 'Library'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Text\",\"Operation\":\"RegexMatch\",\"Value\":\"(?i)^Library$\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Button 'Library'\",\"Tag\":\"button\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"button\",\"ScreenshotPath\":null},{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Anchor\",\"InstanceId\":\"f0f9f074-63af-4bb9-b476-b64f3cd90cf3\",\"Name\":\"Anchor 'Requisition'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Href\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Text\",\"Operation\":\"RegexMatch\",\"Value\":\"(?i)^Requisition$\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Anchor 'Requisition'\",\"Tag\":\"a\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"a\",\"ScreenshotPath\":null},{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Anchor\",\"InstanceId\":\"4dc2dc6c-3c71-465b-b224-3a890b65300a\",\"Name\":\"Anchor 'Search Form'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"LegacyFrame\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Name\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Src\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Main Content\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Inline frame 'Main Content'\",\"Tag\":\"iframe\"},{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"iCIMSbutton enabled \"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Href\",\"Operation\":\"EqualTo\",\"Value\":\"#!\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"refineSearch_anchor\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Search Form\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Anchor 'Search Form'\",\"Tag\":\"a\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"a\",\"ScreenshotPath\":null}],\"Handle\":{\"value\":0},\"ProcessName\":null,\"ScreenShot\":null,\"ElementTypeName\":\"Web Page\",\"InstanceId\":\"8b0fbdb8-3d78-47ca-a36b-e06c3a569b86\",\"Name\":\"Web Page 'https://teleperformance.icims.com/platform'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[],\"CustomValue\":\"domcontainer\",\"Ignore\":false,\"Name\":\"Web Page 'https://teleperformance.icims.com/platform'\",\"Tag\":\"domcontainer\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"domcontainer\",\"ScreenshotPath\":null}],\"Version\":1}",
+      "ImportMetadata": {
+        "DisplayName": "Local computer",
+        "ConnectionString": "",
+        "Type": "Local",
+        "DesktopType": "local"
+      },
+      "Name": "appmask"
+    }
+  ],
+  "ImageRepositorySymbol": {
+    "Repository": "{\"Folders\":[],\"Images\":[],\"Version\":1}",
+    "ImportMetadata": {},
+    "Name": "imgrepo"
+  },
+  "ConnectionReferences": []
+}
