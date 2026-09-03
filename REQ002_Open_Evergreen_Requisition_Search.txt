@@ -1,0 +1,6 @@
+**REGION REQ002 - Open Evergreen Requisition Search
+SET iCIMSRequisitionSearchUrl TO $'''https://teleperformance.icims.com/platform/icims2?module=AppSearchEngine&action=searchFrame&table=Job&jobTemplate=1&run=1&hashed=-908263111'''
+WebAutomation.LaunchEdge.LaunchEdge Url: iCIMSRequisitionSearchUrl ClearCache: False ClearCookies: False WindowState: WebAutomation.BrowserWindowState.Maximized WaitForPageToLoadTimeout: 60 Timeout: 60 PiPUserDataFolderMode: WebAutomation.PiPUserDataFolderModeEnum.AutomaticProfile TargetDesktop: $'''{\"DisplayName\":\"Local computer\",\"Route\":{\"ServerType\":\"Local\",\"ServerAddress\":\"\"},\"DesktopType\":\"local\"}''' BrowserInstance=> iCIMSBrowser
+    ON ERROR REPEAT 3 TIMES WAIT 5
+    END
+**ENDREGION
