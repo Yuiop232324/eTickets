@@ -1,5 +1,5 @@
 **REGION REQ002 - Open Evergreen Requisition Search
-Folder.GetSpecialFolder SpecialFolder: Folder.SpecialFolder.Desktop SpecialFolderPath=> REQ002DesktopPath
+Folder.GetSpecialFolder SpecialFolder: Folder.SpecialFolder.DesktopDirectory SpecialFolderPath=> REQ002DesktopPath
 SET REQ002LogPath TO $'''%REQ002DesktopPath%\PH_HAIREX_1388_REQ002.log'''
 DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
 SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|START'''
@@ -16,7 +16,6 @@ WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Pa
     END
 END
 IF REQ002StepFailed = True THEN
-    ERROR => REQ002LastError Reset: True
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|LIBRARY_TIMEOUT_OR_CLICK_FAILED'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
@@ -37,7 +36,6 @@ WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Pa
     END
 END
 IF REQ002StepFailed = True THEN
-    ERROR => REQ002LastError Reset: True
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|REQUISITION_TIMEOUT_OR_CLICK_FAILED'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
@@ -58,7 +56,6 @@ WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Pa
     END
 END
 IF REQ002StepFailed = True THEN
-    ERROR => REQ002LastError Reset: True
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|SEARCH_FORM_TIMEOUT_OR_CLICK_FAILED'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
