@@ -1,89 +1,156 @@
-**REGION REQ002 - Open and Verify Evergreen Requisition Search Form
 SET REQ002Succeeded TO False
 SET REQ002ErrorCode TO $''''''
-Folder.GetSpecialFolder SpecialFolder: Folder.SpecialFolder.DesktopDirectory SpecialFolderPath=> REQ002DesktopPath
-SET REQ002LogPath TO $'''%REQ002DesktopPath%\PH_HAIREX_1388_REQ002.log'''
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|START|MODE=AUTHENTICATED_JOB_SEARCH_URL'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+Scripting.RunPowershellScript.RunPowershellScript Script: $'''[Console]::Write([IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), 'PH_HAIREX_1388_REQ002.log'))''' ScriptOutput=> REQ002LogFile
+    ON ERROR
+        SET REQ002ErrorCode TO $'''LOG_PATH_INITIALIZATION_FAILED'''
+        GOTO REQ002_End
+    END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|START|MODE=EXACT_MENU_OCR_ROBINSON_SEARCH_FORM_SELECTOR''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 
-# This is the live Job/Requisition Search URL captured from the authenticated UAT session.
-# Navigate the existing iCIMSBrowser; never launch a second browser for this URL.
-SET iCIMSRequisitionSearchUrl TO $'''%iCIMSBaseUrl%/platform/icims2?module=AppSearchEngine&action=searchFrame&table=Job&jobTemplate=1&run=1&hashed=1762382495'''
-SET REQ002StepFailed TO False
-BLOCK
-ON BLOCK ERROR all
-SET REQ002StepFailed TO True
+UIAutomation.FocusWindow.FocusByInstanceOrHandle WindowInstance: iCIMSBrowser
+    ON ERROR
+        GOTO REQ002_Fail_Browser
+    END
+WAIT 1
+
+MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''(?i)\bLibrary\b''' IsRegEx: True WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002LibraryX Y=> REQ002LibraryY Width=> REQ002LibraryWidth Height=> REQ002LibraryHeight
+    ON ERROR
+        GOTO REQ002_Fail_Library
+    END
+MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
+    ON ERROR
+        GOTO REQ002_Fail_Library
+    END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|LIBRARY_EXACT_CLICKED|X=%REQ002LibraryX%|Y=%REQ002LibraryY%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+WAIT 1
+
+# Match the standalone Requisition menu item. The negative lookahead explicitly rejects Requisition Center.
+MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''(?i)\bRequisition\b(?![ \t]+Center\b)''' IsRegEx: True WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002RequisitionX Y=> REQ002RequisitionY Width=> REQ002RequisitionWidth Height=> REQ002RequisitionHeight
+    ON ERROR
+        GOTO REQ002_Fail_Requisition
+    END
+MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
+    ON ERROR
+        GOTO REQ002_Fail_Requisition
+    END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|REQUISITION_EXACT_CLICKED|X=%REQ002RequisitionX%|Y=%REQ002RequisitionY%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+WAIT 5
+
+# Read the URL created by iCIMS itself. Do not build, store, or replay the dynamic hashed URL.
+WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.URLAddress Details=> REQ002CurrentUrl
+    ON ERROR
+        GOTO REQ002_Fail_PageRead
+    END
+WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002PageText
+    ON ERROR
+        GOTO REQ002_Fail_PageRead
+    END
+
+IF NotContains(REQ002CurrentUrl, $'''module=AppSearchEngine''', True) THEN
+    GOTO REQ002_Fail_WrongUrl
 END
-    WebAutomation.GoToWebPage.GoToWebPage BrowserInstance: iCIMSBrowser Url: iCIMSRequisitionSearchUrl WaitForPageToLoadTimeout: 60
-    WAIT 5
-    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.URLAddress Details=> REQ002CurrentUrl
-    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002PageText
+IF NotContains(REQ002CurrentUrl, $'''table=Job''', True) THEN
+    GOTO REQ002_Fail_WrongUrl
 END
-IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''JOB_SEARCH_NAVIGATION_FAILED'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
+IF Contains(REQ002PageText, $'''Access Denied''', True) THEN
+    GOTO REQ002_Fail_WrongPage
+END
+IF Contains(REQ002PageText, $'''Only Job Advertising Administrators''', True) THEN
+    GOTO REQ002_Fail_WrongPage
+END
+IF NotContains(REQ002PageText, $'''Requisition Search''', True) THEN
+    GOTO REQ002_Fail_NotVerified
+END
+IF NotContains(REQ002PageText, $'''Job Search Results''', True) THEN
+    GOTO REQ002_Fail_NotVerified
 END
 
-# Reject Requisition Center, Access Denied, expired links, and every non-Job search page.
-IF Contains(REQ002CurrentUrl, $'''module=AppSearchEngine''', True) = False OR Contains(REQ002CurrentUrl, $'''table=Job''', True) = False THEN
-    SET REQ002ErrorCode TO $'''WRONG_URL_NOT_JOB_SEARCH'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
-END
-IF Contains(REQ002PageText, $'''Access Denied''', True) = True OR Contains(REQ002PageText, $'''Only Job Advertising Administrators''', True) = True THEN
-    SET REQ002ErrorCode TO $'''WRONG_PAGE_OR_ACCESS_DENIED'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
-END
-IF Contains(REQ002PageText, $'''Requisition Search''', True) = False OR Contains(REQ002PageText, $'''Job Search Results''', True) = False THEN
-    SET REQ002ErrorCode TO $'''JOB_SEARCH_PAGE_NOT_VERIFIED'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
-END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|JOB_SEARCH_PAGE_VERIFIED'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|JOB_SEARCH_PAGE_VERIFIED''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 
-# Open Search Form using its one visible label, then verify that the control changes to Hide Form.
-SET REQ002StepFailed TO False
-BLOCK
-ON BLOCK ERROR all
-SET REQ002StepFailed TO True
-END
-    UIAutomation.FocusWindow.FocusByInstanceOrHandle WindowInstance: iCIMSBrowser
-    MouseAndKeyboard.MoveMouseToTextOnScreenWithOCR.WaitForTextToAppearAndMoveMouseToTextOnScreenWithWindowsOcr TextToFind: $'''Search Form''' IsRegEx: False WindowsOcrLanguage: MouseAndKeyboard.WindowsOcrLanguage.English Occurence: 1 SearchForTextOn: MouseAndKeyboard.SearchTarget.EntireScreen ImageWidthMultiplier: 1 ImageHeightMultiplier: 1 MovementStyle: MouseAndKeyboard.MovementStyle.Instant Timeout: 20 PositionRelativeToText: MouseAndKeyboard.PositionOnImage.MiddleCenter OffsetX: 0 OffsetY: 0 X=> REQ002SearchFormX Y=> REQ002SearchFormY Width=> REQ002SearchFormWidth Height=> REQ002SearchFormHeight
-    MouseAndKeyboard.SendMouseClick.Click ClickType: MouseAndKeyboard.MouseClickType.LeftClick MillisecondsDelay: 200
-    WAIT 3
-    WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002PageTextAfterSearchFormClick
-END
-IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''SEARCH_FORM_OCR_CLICK_OR_READ_FAILED'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
-END
-IF Contains(REQ002PageTextAfterSearchFormClick, $'''Hide Form''', True) = False THEN
-    SET REQ002ErrorCode TO $'''SEARCH_FORM_NOT_OPEN_AFTER_CLICK'''
-    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%|X=%REQ002SearchFormX%|Y=%REQ002SearchFormY%'''
-    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-    EXIT FUNCTION
+# Reuse the Search Form browser control pattern recorded in Robinson's candidate automation.
+WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: req002mask['Web Page \'REQ002 Job Search\'']['Span \'Search Form\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
+    ON ERROR
+        GOTO REQ002_Fail_SearchFormClick
+    END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|SEARCH_FORM_SELECTOR_CLICKED|SOURCE=ROBINSON_REUSED_CONTROL''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+WAIT 3
+
+WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ002ExpandedPageText
+    ON ERROR
+        GOTO REQ002_Fail_SearchFormClick
+    END
+IF NotContains(REQ002ExpandedPageText, $'''Hide Form''', True) THEN
+    GOTO REQ002_Fail_FormNotOpen
 END
 
 SET REQ002Succeeded TO True
 SET REQ002ErrorCode TO $''''''
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SUCCESS|JOB_SEARCH_AND_FORM_VERIFIED'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-**ENDREGION
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|INFO|REQ002|SUCCESS|JOB_SEARCH_AND_FORM_VERIFIED''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+GOTO REQ002_End
+
+LABEL REQ002_Fail_Browser
+SET REQ002ErrorCode TO $'''BROWSER_INSTANCE_OR_FOCUS_FAILED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_Library
+SET REQ002ErrorCode TO $'''LIBRARY_EXACT_OCR_OR_CLICK_FAILED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_Requisition
+SET REQ002ErrorCode TO $'''REQUISITION_EXACT_OCR_OR_CLICK_FAILED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_PageRead
+SET REQ002ErrorCode TO $'''JOB_SEARCH_URL_OR_PAGE_READ_FAILED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_WrongUrl
+SET REQ002ErrorCode TO $'''WRONG_URL_NOT_JOB_SEARCH'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_WrongPage
+SET REQ002ErrorCode TO $'''WRONG_PAGE_OR_ACCESS_DENIED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_NotVerified
+SET REQ002ErrorCode TO $'''JOB_SEARCH_PAGE_NOT_VERIFIED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_SearchFormClick
+SET REQ002ErrorCode TO $'''SEARCH_FORM_SELECTOR_CLICK_OR_READ_FAILED'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_Fail_FormNotOpen
+SET REQ002ErrorCode TO $'''SEARCH_FORM_NOT_OPEN_AFTER_CLICK'''
+GOTO REQ002_WriteFailure
+
+LABEL REQ002_WriteFailure
+SET REQ002Succeeded TO False
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ002Now%|ERROR|REQ002|%REQ002ErrorCode%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+
+LABEL REQ002_End
+
+# [ControlRepository][PowerAutomateDesktop]
+
+{
+  "ControlRepositorySymbols": [
+    {
+      "IgnoreImagesOnSerialization": false,
+      "Repository": "{\"Screens\":[{\"Controls\":[{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Span\",\"InstanceId\":\"4dc2dc6c-3c71-465b-b224-3a890b65300a\",\"Name\":\"Span 'Search Form'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"LegacyFrame\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Name\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Src\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"SrcDoc\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Main Content\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Inline frame 'Main Content'\",\"Tag\":\"iframe\"},{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"iCIMSbutton enabled \"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Href\",\"Operation\":\"EqualTo\",\"Value\":\"#!\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"refineSearch_anchor\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Search Form\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Anchor 'Search Form'\",\"Tag\":\"a\"},{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"iCIMSbuttonContent\"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":null}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Span 'Search Form'\",\"Tag\":\"span\"},{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"iCIMSbuttonLabel\"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Text\",\"Operation\":\"EqualTo\",\"Value\":\"Search Form\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Span 'Search Form'\",\"Tag\":\"span\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"span\",\"ScreenshotPath\":null}],\"Handle\":{\"value\":0},\"ProcessName\":null,\"ScreenShot\":null,\"ElementTypeName\":\"Web Page\",\"InstanceId\":\"388639fe-6739-45ab-be91-a94d00c8f4b7\",\"Name\":\"Web Page 'REQ002 Job Search'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[],\"CustomValue\":\"domcontainer\",\"Ignore\":false,\"Name\":\"Web Page 'https://teleperformance.icims.com/platform/icims2?*table=Job*'\",\"Tag\":\"domcontainer\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"domcontainer\",\"ScreenshotPath\":null}],\"Version\":1}",
+      "ImportMetadata": {
+        "DisplayName": "Local computer",
+        "ConnectionString": "",
+        "Type": "Local",
+        "DesktopType": "local"
+      },
+      "Name": "req002mask"
+    }
+  ]
+}
