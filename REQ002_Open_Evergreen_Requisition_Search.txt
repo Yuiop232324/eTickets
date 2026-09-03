@@ -7,91 +7,174 @@ DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAn
 SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|START'''
 File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 
+# Click the visible Library menu in the already authenticated iCIMS browser.
+# This intentionally does not launch another browser and does not use a copied or hashed URL.
 SET REQ002StepFailed TO False
+SET REQ002JsResult TO $''''''
 BLOCK
 ON BLOCK ERROR all
 SET REQ002StepFailed TO True
 END
-WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Button \'Library\'']) FOR 60
-WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Button \'Library\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
-    ON ERROR REPEAT 3 TIMES WAIT 3
-    END
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+const isVisible = function (element) {
+    if (!element) return false;
+    const style = window.getComputedStyle(element);
+    const box = element.getBoundingClientRect();
+    return style.visibility !== \'hidden\' && style.display !== \'none\' && box.width > 0 && box.height > 0;
+};
+const textOf = function (element) {
+    return (element.innerText || element.textContent || \'\').replace(/\\s+/g, \' \').trim();
+};
+const candidates = Array.from(document.querySelectorAll(\'button, a, [role="button"], [role="menuitem"]\'));
+const target = candidates.find(function (element) {
+    return isVisible(element) && textOf(element).toLowerCase() === \'library\';
+});
+if (!target) return \'LIBRARY_NOT_FOUND\';
+target.scrollIntoView({block: \'center\', inline: \'center\'});
+target.click();
+return \'LIBRARY_CLICKED\';
+}''' Result=> REQ002JsResult
 END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|LIBRARY_RESULT=%REQ002JsResult%'''
+File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''LIBRARY_TIMEOUT_OR_CLICK_FAILED'''
+    SET REQ002ErrorCode TO $'''LIBRARY_JAVASCRIPT_FAILED'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|LIBRARY_CLICKED'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-
-SET REQ002StepFailed TO False
-BLOCK
-ON BLOCK ERROR all
-SET REQ002StepFailed TO True
-END
-WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Requisition\'']) FOR 30
-WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Requisition\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
-    ON ERROR REPEAT 3 TIMES WAIT 3
+IF REQ002JsResult <> $'''LIBRARY_CLICKED''' THEN
+    SET REQ002ErrorCode TO $'''%REQ002JsResult%'''
+    IF REQ002ErrorCode = $'''''' THEN
+        SET REQ002ErrorCode TO $'''LIBRARY_JAVASCRIPT_RETURNED_EMPTY'''
     END
-END
-IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''REQUISITION_TIMEOUT_OR_CLICK_FAILED'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|REQUISITION_CLICKED'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+WAIT 2
 
+# Click the visible Requisition item from the open Library menu.
 SET REQ002StepFailed TO False
+SET REQ002JsResult TO $''''''
 BLOCK
 ON BLOCK ERROR all
 SET REQ002StepFailed TO True
 END
-WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Search Form\'']) FOR 60
-WebAutomation.Click.Click BrowserInstance: iCIMSBrowser Control: appmask['Web Page \'https://teleperformance.icims.com/platform\'']['Anchor \'Search Form\''] ClickType: WebAutomation.ClickType.LeftClick MouseClick: True WaitForPageToLoadTimeout: 60 MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0
-    ON ERROR REPEAT 3 TIMES WAIT 3
-    END
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+const isVisible = function (element) {
+    if (!element) return false;
+    const style = window.getComputedStyle(element);
+    const box = element.getBoundingClientRect();
+    return style.visibility !== \'hidden\' && style.display !== \'none\' && box.width > 0 && box.height > 0;
+};
+const textOf = function (element) {
+    return (element.innerText || element.textContent || \'\').replace(/\\s+/g, \' \').trim();
+};
+const candidates = Array.from(document.querySelectorAll(\'a, button, [role="menuitem"], [role="button"]\'));
+const exact = candidates.filter(function (element) {
+    return isVisible(element) && textOf(element).toLowerCase() === \'requisition\';
+});
+const target = exact.find(function (element) {
+    const href = (element.getAttribute(\'href\') || \'\').toLowerCase();
+    return href.indexOf(\'job\') >= 0 || href.indexOf(\'requisition\') >= 0;
+}) || exact[0];
+if (!target) return \'REQUISITION_NOT_FOUND\';
+target.scrollIntoView({block: \'center\', inline: \'center\'});
+target.click();
+return \'REQUISITION_CLICKED\';
+}''' Result=> REQ002JsResult
 END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|REQUISITION_RESULT=%REQ002JsResult%'''
+File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
 IF REQ002StepFailed = True THEN
-    SET REQ002ErrorCode TO $'''SEARCH_FORM_TIMEOUT_OR_CLICK_FAILED'''
+    SET REQ002ErrorCode TO $'''REQUISITION_JAVASCRIPT_FAILED'''
     DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
     SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
     File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
     EXIT FUNCTION
 END
-DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
-SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SEARCH_FORM_OPENED'''
-File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
-SET REQ002Succeeded TO True
-**ENDREGION
+IF REQ002JsResult <> $'''REQUISITION_CLICKED''' THEN
+    SET REQ002ErrorCode TO $'''%REQ002JsResult%'''
+    IF REQ002ErrorCode = $'''''' THEN
+        SET REQ002ErrorCode TO $'''REQUISITION_JAVASCRIPT_RETURNED_EMPTY'''
+    END
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+WAIT 5
 
-# [ControlRepository][PowerAutomateDesktop]
-
-{
-  "ControlRepositorySymbols": [
-    {
-      "IgnoreImagesOnSerialization": false,
-      "Repository": "{\"Screens\":[{\"Controls\":[{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Button\",\"InstanceId\":\"e6b82bd8-2f97-4a73-bda4-2b32089bce77\",\"Name\":\"Button 'Library'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Text\",\"Operation\":\"RegexMatch\",\"Value\":\"(?i).*Library.*\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Button 'Library'\",\"Tag\":\"button\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"button\",\"ScreenshotPath\":null},{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Anchor\",\"InstanceId\":\"f0f9f074-63af-4bb9-b476-b64f3cd90cf3\",\"Name\":\"Anchor 'Requisition'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Href\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Text\",\"Operation\":\"RegexMatch\",\"Value\":\"(?i).*Requisition.*\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Anchor 'Requisition'\",\"Tag\":\"a\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"a\",\"ScreenshotPath\":null},{\"AutomationProtocol\":\"uia3\",\"ScreenShot\":null,\"ElementTypeName\":\"Anchor\",\"InstanceId\":\"4dc2dc6c-3c71-465b-b224-3a890b65300a\",\"Name\":\"Anchor 'Search Form'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"LegacyFrame\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Name\",\"Operation\":\"EqualTo\",\"Value\":\"main_body\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Src\",\"Operation\":\"EqualTo\",\"Value\":null},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Main Content\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Inline frame 'Main Content'\",\"Tag\":\"iframe\"},{\"Attributes\":[{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Class\",\"Operation\":\"EqualTo\",\"Value\":\"iCIMSbutton enabled \"},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Href\",\"Operation\":\"EqualTo\",\"Value\":\"#!\"},{\"Ignore\":false,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Id\",\"Operation\":\"EqualTo\",\"Value\":\"refineSearch_anchor\"},{\"Ignore\":true,\"IsOrdinal\":true,\"IsDisabledAttribute\":false,\"Name\":\"Ordinal\",\"Operation\":\"EqualTo\",\"Value\":0},{\"Ignore\":true,\"IsOrdinal\":false,\"IsDisabledAttribute\":false,\"Name\":\"Title\",\"Operation\":\"EqualTo\",\"Value\":\"Search Form\"}],\"CustomValue\":null,\"Ignore\":false,\"Name\":\"Anchor 'Search Form'\",\"Tag\":\"a\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"a\",\"ScreenshotPath\":null}],\"Handle\":{\"value\":0},\"ProcessName\":null,\"ScreenShot\":null,\"ElementTypeName\":\"Web Page\",\"InstanceId\":\"8b0fbdb8-3d78-47ca-a36b-e06c3a569b86\",\"Name\":\"Web Page 'https://teleperformance.icims.com/platform'\",\"SelectorCount\":1,\"Selectors\":[{\"CustomSelector\":null,\"Elements\":[{\"Attributes\":[],\"CustomValue\":\"domcontainer\",\"Ignore\":false,\"Name\":\"Web Page 'https://teleperformance.icims.com/platform'\",\"Tag\":\"domcontainer\"}],\"Ignore\":false,\"ImageSelector\":null,\"IsCustom\":false,\"IsImageBased\":false,\"IsPlaceholderSelector\":false,\"IsWindowsInstance\":false,\"Name\":\"Default Selector\",\"Properties\":[]}],\"Tag\":\"domcontainer\",\"ScreenshotPath\":null}],\"Version\":1}",
-      "ImportMetadata": {
-        "DisplayName": "Local computer",
-        "ConnectionString": "",
-        "Type": "Local",
-        "DesktopType": "local"
-      },
-      "Name": "appmask"
+# The requisition results page exposes Search Form inside the legacy main_body iframe.
+# Use the confirmed element id first; fall back to the visible label if the id differs.
+SET REQ002StepFailed TO False
+SET REQ002JsResult TO $''''''
+BLOCK
+ON BLOCK ERROR all
+SET REQ002StepFailed TO True
+END
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+const isVisible = function (element) {
+    if (!element) return false;
+    const style = element.ownerDocument.defaultView.getComputedStyle(element);
+    const box = element.getBoundingClientRect();
+    return style.visibility !== \'hidden\' && style.display !== \'none\' && box.width > 0 && box.height > 0;
+};
+const findIn = function (doc) {
+    const byId = doc.getElementById(\'refineSearch_anchor\');
+    if (byId && isVisible(byId)) return byId;
+    return Array.from(doc.querySelectorAll(\'a, button, [role="button"]\')).find(function (element) {
+        const text = (element.innerText || element.textContent || \'\').replace(/\\s+/g, \' \').trim().toLowerCase();
+        return isVisible(element) && text === \'search form\';
+    });
+};
+let target = findIn(document);
+if (!target) {
+    const frames = Array.from(document.querySelectorAll(\'iframe\'));
+    for (const frame of frames) {
+        try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            target = findIn(doc);
+            if (target) break;
+        } catch (error) {
+        }
     }
-  ],
-  "ImageRepositorySymbol": {
-    "Repository": "{\"Folders\":[],\"Images\":[],\"Version\":1}",
-    "ImportMetadata": {},
-    "Name": "imgrepo"
-  },
-  "ConnectionReferences": []
 }
+if (!target) return \'SEARCH_FORM_NOT_FOUND\';
+target.scrollIntoView({block: \'center\', inline: \'center\'});
+target.click();
+return \'SEARCH_FORM_CLICKED\';
+}''' Result=> REQ002JsResult
+END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SEARCH_FORM_RESULT=%REQ002JsResult%'''
+File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+IF REQ002StepFailed = True THEN
+    SET REQ002ErrorCode TO $'''SEARCH_FORM_JAVASCRIPT_FAILED'''
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+IF REQ002JsResult <> $'''SEARCH_FORM_CLICKED''' THEN
+    SET REQ002ErrorCode TO $'''%REQ002JsResult%'''
+    IF REQ002ErrorCode = $'''''' THEN
+        SET REQ002ErrorCode TO $'''SEARCH_FORM_JAVASCRIPT_RETURNED_EMPTY'''
+    END
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+    SET REQ002LogLine TO $'''%REQ002LogTime%|ERROR|REQ002|%REQ002ErrorCode%'''
+    File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    EXIT FUNCTION
+END
+
+SET REQ002Succeeded TO True
+SET REQ002ErrorCode TO $''''''
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ002LogTime
+SET REQ002LogLine TO $'''%REQ002LogTime%|INFO|REQ002|SUCCESS|SEARCH_FORM_OPENED'''
+File.WriteText File: REQ002LogPath TextToWrite: REQ002LogLine AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+**ENDREGION
