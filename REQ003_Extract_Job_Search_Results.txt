@@ -1,0 +1,53 @@
+SET REQ003Succeeded TO False
+SET REQ003ErrorCode TO $''''''
+SET REQ003ExtractedRowCount TO 0
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ003Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ003Now%|INFO|REQ003|START|SOURCE=OPEN_JOB_SEARCH_RESULTS''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+IF REQ002Succeeded = False THEN
+    GOTO REQ003_Fail_REQ002
+END
+WebAutomation.GetDetailsOfWebPage BrowserInstance: iCIMSBrowser DetailsType: WebAutomation.DetailsType.Text Details=> REQ003PageText
+    ON ERROR
+        GOTO REQ003_Fail_PageRead
+    END
+IF Contains(REQ003PageText, $'''Access Denied''', True) THEN
+    GOTO REQ003_Fail_ResultsPage
+END
+IF NotContains(REQ003PageText, $'''Job Search Results''', True) THEN
+    GOTO REQ003_Fail_ResultsPage
+END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ003Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ003Now%|INFO|REQ003|RESULTS_PAGE_VERIFIED|NEXT=EXTRACT_ALL_AVAILABLE_PAGES''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+LABEL REQ003_INSERT_EXTRACT_DATA_ACTION_HERE
+SET REQ003ExtractedRowCount TO REQ003Requisitions.RowsCount
+IF REQ003ExtractedRowCount = 0 THEN
+    GOTO REQ003_Fail_ZeroRows
+END
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ003Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ003Now%|INFO|REQ003|PAGINATION_COMPLETE|ROWS=%REQ003ExtractedRowCount%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+SET REQ003Succeeded TO True
+SET REQ003ErrorCode TO $''''''
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ003Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ003Now%|INFO|REQ003|SUCCESS|ROWS=%REQ003ExtractedRowCount%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+GOTO REQ003_End
+LABEL REQ003_Fail_REQ002
+SET REQ003ErrorCode TO $'''REQ002_NOT_SUCCESSFUL'''
+GOTO REQ003_WriteFailure
+LABEL REQ003_Fail_PageRead
+SET REQ003ErrorCode TO $'''RESULTS_PAGE_READ_FAILED'''
+GOTO REQ003_WriteFailure
+LABEL REQ003_Fail_ResultsPage
+SET REQ003ErrorCode TO $'''RESULTS_PAGE_NOT_PRESENT'''
+GOTO REQ003_WriteFailure
+LABEL REQ003_Fail_Extraction
+SET REQ003ErrorCode TO $'''TABLE_EXTRACTION_OR_PAGER_FAILED'''
+GOTO REQ003_WriteFailure
+LABEL REQ003_Fail_ZeroRows
+SET REQ003ErrorCode TO $'''ZERO_ROWS_EXTRACTED'''
+GOTO REQ003_WriteFailure
+LABEL REQ003_WriteFailure
+SET REQ003Succeeded TO False
+SET REQ003ExtractedRowCount TO 0
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> REQ003Now
+File.WriteText File: REQ002LogFile TextToWrite: $'''%REQ003Now%|ERROR|REQ003|%REQ003ErrorCode%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+LABEL REQ003_End
