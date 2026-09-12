@@ -1,0 +1,888 @@
+SET REQ002Succeeded TO False
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'library\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'requisition\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'form\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'search_open\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'search_filter\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'search_select\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'output_open\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'output_filter\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'output_select\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET BrowserStepOK TO False
+LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'submit\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+        ON ERROR
+            GOTO Search_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+    IF BrowserStep['ok'] = True THEN
+        SET BrowserStepOK TO True
+        EXIT LOOP
+    END
+    WAIT 0.5
+END
+IF BrowserStepOK = False THEN
+    SET AutomationError TO BrowserStep['error']
+    GOTO Search_Fail
+END
+SET REQ002Succeeded TO True
+GOTO Search_End
+LABEL Search_Fail
+IF AutomationError = $'''''' THEN
+    SET AutomationError TO $'''SEARCH_ACTION_FAILED'''
+END
+LABEL Search_End

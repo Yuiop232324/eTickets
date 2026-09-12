@@ -1,0 +1,217 @@
+SET REQ003Succeeded TO False
+SET ExpectedPage TO 1
+SET ExpectedTotal TO -1
+SET ExpectedPages TO -1
+SET CapturedCount TO 0
+SET PreviousSignature TO $''''''
+SET AllItems TO $''''''
+SET ItemSeparator TO $''''''
+Variables.CreateNewList List=> SeenIds
+LABEL Read_Page
+SET PageReady TO False
+SET StableReads TO 0
+SET StableSignature TO $''''''
+LOOP PollAttempt FROM 1 TO 60 STEP 1
+    WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  try {
+    var frame = document.querySelector(\'iframe#main_body\');
+    var doc = frame ? frame.contentDocument : document;
+    if (!doc) return JSON.stringify({ok:false,error:\'RESULT_FRAME_UNAVAILABLE\'});
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(function(e){return e.getClientRects().length>0;})) return JSON.stringify({ok:false,error:\'RESULTS_LOADING\'});
+    var table = doc.querySelector(\'table#searchResultsGridTable\');
+    var pager = doc.querySelector(\'select#pageNumberSelect\');
+    var heading = doc.querySelector(\'#searchResultsGrid .titleTextDiv\');
+    if (!table || !pager || !heading) return JSON.stringify({ok:false,error:\'RESULTS_NOT_READY\'});
+    var norm = function(s) { return String(s || \'\').replace(/\\s+/g,\' \').trim(); };
+    var found = norm(heading.textContent).match(/^Job Search Results\\s*\\(([\\d,]+) Found\\)$/);
+    if (!found) return JSON.stringify({ok:false,error:\'RESULT_COUNT_UNAVAILABLE\'});
+    var names = [\'Requisition ID\',\'Posted: English (PHL)\',\'Location : Country\',\'Job Folder\',\'Job Posting Title\',\'# of Openings (Cleared Target)\',\'# Ever in Bin Apply\',\'# Currently in Status Evergreen Move: Moved to another requisition or talent pool\'];
+    var keys = [\'requisitionId\',\'postedEnglishPHL\',\'locationCountry\',\'jobFolder\',\'jobPostingTitle\',\'openingsClearedTarget\',\'everInBinApply\',\'currentlyInStatusEvergreenMove\'];
+    var headers = Array.from(table.rows[0].cells).map(function(c){ return norm(c.textContent); });
+    var positions = names.map(function(n){ return headers.indexOf(n); });
+    if (positions.some(function(p){return p<0;}) || names.some(function(n){return headers.filter(function(h){return h===n;}).length!==1;})) return JSON.stringify({ok:false,error:\'OUTPUT_SCHEMA_MISMATCH\'});
+    var page = Number(pager.options[pager.selectedIndex].textContent);
+    var pages = pager.options.length;
+    var ids = [];
+    var rows = Array.from(table.rows).slice(1).filter(function(r){return r.querySelector(\'input[type="checkbox"]\');}).map(function(r){
+      var result = {};
+      keys.forEach(function(k,i){if(!r.cells[positions[i]]) throw new Error(\'ROW_WIDTH_MISMATCH\'); result[k]=norm(r.cells[positions[i]].textContent);});
+      if(!result.requisitionId) throw new Error(\'EMPTY_REQUISITION_ID\');
+      ids.push(result.requisitionId);
+      return result;
+    });
+    var next=doc.querySelector(\'#pageRight_href\');
+    var hasNext=!!next && next.getClientRects().length>0 && !next.closest(\'.NoDisplay\') && !next.classList.contains(\'disabled\') && next.getAttribute(\'aria-disabled\')!==\'true\';
+    if(page<pages && !hasNext) return JSON.stringify({ok:false,error:\'PAGER_INCONSISTENT\'});
+    if(page===pages && hasNext) return JSON.stringify({ok:false,error:\'LAST_PAGE_STILL_HAS_NEXT\'});
+    var total=Number(found[1].replace(/,/g,\'\'));
+    if(total>0 && !rows.length) return JSON.stringify({ok:false,error:\'EMPTY_RESULT_PAGE\'});
+    return JSON.stringify({ok:true,error:\'\',page:page,pages:pages,total:total,count:rows.length,ids:ids,rows:rows,items:JSON.stringify(rows).slice(1,-1),signature:JSON.stringify(rows),hasNext:hasNext});
+  } catch(e) {return JSON.stringify({ok:false,error:e.message===\'ROW_WIDTH_MISMATCH\'||e.message===\'EMPTY_REQUISITION_ID\'||e.message===\'DUPLICATE_ID_ON_PAGE\'?e.message:\'RESULT_READ_FAILED\'});}
+}
+''' Result=> PageText
+        ON ERROR
+            GOTO Extract_Fail
+        END
+    Variables.ConvertJsonToCustomObject Json: PageText CustomObject=> PageData
+    IF PageData['ok'] = True THEN
+        IF PageData['page'] = ExpectedPage THEN
+            IF PageData['signature'] <> PreviousSignature THEN
+                IF PageData['signature'] = StableSignature THEN
+                    Variables.IncreaseVariable Value: StableReads IncrementValue: 1
+                ELSE
+                    SET StableSignature TO PageData['signature']
+                    SET StableReads TO 1
+                END
+                IF StableReads >= 2 THEN
+                    SET PageReady TO True
+                    EXIT LOOP
+                END
+            END
+        END
+    ELSE
+        SET StableReads TO 0
+        SET StableSignature TO $''''''
+    END
+    WAIT 0.5
+END
+IF PageReady = False THEN
+    SET AutomationError TO $'''RESULT_PAGE_TIMEOUT_OR_SCHEMA_MISMATCH'''
+    GOTO Extract_Fail
+END
+IF ExpectedTotal = -1 THEN
+    SET ExpectedTotal TO PageData['total']
+    SET ExpectedPages TO PageData['pages']
+END
+IF PageData['total'] <> ExpectedTotal THEN
+    SET AutomationError TO $'''RESULT_COUNT_CHANGED_DURING_CAPTURE'''
+    GOTO Extract_Fail
+END
+IF PageData['pages'] <> ExpectedPages THEN
+    SET AutomationError TO $'''PAGE_COUNT_CHANGED_DURING_CAPTURE'''
+    GOTO Extract_Fail
+END
+IF PageData['count'] > 0 THEN
+    SET AllItems TO $'''%AllItems%%ItemSeparator%%PageData['items']%'''
+    SET ItemSeparator TO $''','''
+END
+Variables.IncreaseVariable Value: CapturedCount IncrementValue: PageData['count']
+LOOP FOREACH RequisitionId IN PageData['ids']
+    IF NotContains(SeenIds, RequisitionId, False) THEN
+        Variables.AddItemToList Item: RequisitionId List: SeenIds
+    END
+END
+SET PreviousSignature TO PageData['signature']
+IF ExpectedPage < ExpectedPages THEN
+    SET BrowserStepOK TO False
+    LOOP BrowserAttempt FROM 1 TO 40 STEP 1
+        WebAutomation.ExecuteJavascript BrowserInstance: iCIMSBrowser Javascript: $'''function ExecuteScript() {
+  var command = \'next\';
+  var norm = function(s){return String(s||\'\').replace(/\\s+/g,\' \').trim();};
+  var visible = function(e){return !!e && e.getClientRects().length>0 && !e.closest(\'.NoDisplay\');};
+  var reply = function(ok,error){return JSON.stringify({ok:ok,error:error||\'\'});};
+  try {
+    if(location.hostname!==\'teleperformance.icims.com\') return reply(false,\'ICIMS_SIGN_IN_REQUIRED\');
+    if(command===\'library\') {
+      var menu=document.querySelector(\'[role="menu"]\');
+      if(visible(menu)) return reply(true);
+      var library=document.querySelector(\'button#Library\');
+      if(!visible(library)) return reply(false,\'LIBRARY_NOT_READY\');
+      library.click(); return reply(true);
+    }
+    if(command===\'requisition\') {
+      var links=Array.from(document.querySelectorAll(\'[role="menuitem"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===\'Requisition\';});
+      if(links.length!==1) return reply(false,\'REQUISITION_MENU_NOT_READY\');
+      links[0].click(); return reply(true);
+    }
+    var frame=document.querySelector(\'iframe#main_body\');
+    var doc=frame?frame.contentDocument:document;
+    if(!doc) return reply(false,\'FRAME_NOT_READY\');
+    if(Array.from(doc.querySelectorAll(\'.loadingOverlayMessage\')).some(visible))return reply(false,\'PAGE_LOADING\');
+    if(command===\'form\') {
+      if(visible(doc.querySelector(\'#searchFormDiv\')))return reply(true);
+      var form=doc.querySelector(\'#refineSearch_anchor\');
+      if(!visible(form))return reply(false,\'SEARCH_FORM_NOT_READY\');
+      form.click();return reply(true);
+    }
+    var search=command.indexOf(\'search_\')===0;
+    var prefix=search?\'savedsearchpicker\':\'savedoutputpicker\';
+    var wanted=search?\'DB: EG Active Posted PHL\':\'PHL Active Posted EG REQ\';
+    var picker=doc.querySelector(\'#\'+prefix+\'_icimsDropdown\');
+    if(/_open$/.test(command)) {
+      if(!visible(picker))return reply(false,\'PICKER_NOT_READY\');
+      if(picker.getAttribute(\'aria-expanded\')!==\'true\')picker.click();
+      return reply(true);
+    }
+    if(/_filter$/.test(command)) {
+      var input=doc.querySelector(\'#\'+prefix+\'_icimsDropdown_ctnr input[role="combobox"]\');
+      if(!visible(input))return reply(false,\'PICKER_INPUT_NOT_READY\');
+      input.focus();
+      var win=doc.defaultView;
+      Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype,\'value\').set.call(input,wanted);
+      input.dispatchEvent(new win.Event(\'input\',{bubbles:true}));
+      input.dispatchEvent(new win.KeyboardEvent(\'keyup\',{bubbles:true,key:\'Q\',code:\'KeyQ\',keyCode:81,which:81}));
+      return reply(true);
+    }
+    if(/_select$/.test(command)) {
+      if(picker&&norm(picker.textContent)===wanted&&picker.getAttribute(\'aria-expanded\')===\'false\')return reply(true);
+      var options=Array.from(doc.querySelectorAll(\'#\'+prefix+\'_dropdown-results [id^="result-selectable_"]\')).filter(function(e){return visible(e)&&norm(e.textContent)===wanted;});
+      if(options.length!==1)return reply(false,\'EXACT_TEMPLATE_NOT_READY\');
+      options[0].click();return reply(true);
+    }
+    if(command===\'submit\') {
+      var a=doc.querySelector(\'#savedsearchpicker_fakeSelected_icimsDropdown\');
+      var b=doc.querySelector(\'#savedoutputpicker_fakeSelected_icimsDropdown\');
+      var headers=doc.querySelector(\'#columnContainer\');
+      if(!a||!b||norm(a.textContent)!==\'DB: EG Active Posted PHL\'||norm(b.textContent)!==\'PHL Active Posted EG REQ\'||!headers||!norm(headers.textContent).includes(\'Posted: English (PHL)\'))return reply(false,\'TEMPLATES_NOT_READY\');
+      var submit=doc.querySelector(\'#searchSubmitButton_anchor\');
+      if(!visible(submit))return reply(false,\'SEARCH_BUTTON_NOT_READY\');
+      submit.click();return reply(true);
+    }
+    if(command===\'next\') {
+      var next=doc.querySelector(\'#pageRight_href\');
+      if(!visible(next))return reply(false,\'NEXT_PAGE_NOT_AVAILABLE\');
+      next.click();return reply(true);
+    }
+    return reply(false,\'UNKNOWN_COMMAND\');
+  } catch(e) {return reply(false,\'BROWSER_ACTION_FAILED\');}
+}
+''' Result=> BrowserStepText
+            ON ERROR
+                GOTO Extract_Fail
+            END
+        Variables.ConvertJsonToCustomObject Json: BrowserStepText CustomObject=> BrowserStep
+        IF BrowserStep['ok'] = True THEN
+            SET BrowserStepOK TO True
+            EXIT LOOP
+        END
+        WAIT 0.5
+    END
+    IF BrowserStepOK = False THEN
+        SET AutomationError TO BrowserStep['error']
+        GOTO Extract_Fail
+    END
+    Variables.IncreaseVariable Value: ExpectedPage IncrementValue: 1
+    GOTO Read_Page
+END
+IF CapturedCount <> ExpectedTotal THEN
+    SET AutomationError TO $'''TOTAL_ROWS_MISMATCH'''
+    GOTO Extract_Fail
+END
+File.WriteText File: REQ003JsonOutputFile TextToWrite: $'''[%AllItems%]''' AppendNewLine: False IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+    ON ERROR
+        SET AutomationError TO $'''OUTPUT_WRITE_FAILED'''
+        GOTO Extract_Fail
+    END
+SET REQ003ExtractedRowCount TO CapturedCount
+SET REQ003UniqueRequisitionCount TO SeenIds.Count
+SET REQ003DuplicateRowCount TO CapturedCount - SeenIds.Count
+SET REQ003Succeeded TO True
+GOTO Extract_End
+LABEL Extract_Fail
+IF AutomationError = $'''''' THEN
+    SET AutomationError TO $'''EXTRACTION_ACTION_FAILED'''
+END
+SET REQ003ErrorCode TO AutomationError
+SET REQ003Succeeded TO False
+LABEL Extract_End
