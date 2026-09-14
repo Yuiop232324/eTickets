@@ -1,31 +1,32 @@
-TapTalent integration — for TapTalent and HAIreX
+Hi Team,
 
-1. Please share the final PH candidate payload, the HAIreX receiving endpoint and the condition that triggers delivery. Include the candidate’s form answers and requisition reference.
+Based on my understanding of the Philippines process and our discussions, I have prepared the attached end-to-end workflow document. Please review and confirm the proposed development approach for the upcoming Power Automate tasks.
 
-2. After TapTalent delivery, will HAIreX create/link the candidate, lead and requisition and make the record ready for our iCIMS bot? Please identify any additional step required from Power Automate.
+Our implementation covers **iCIMS browser automation, using HAIreX APIs to retrieve the required data and report the results**. We need the following technical inputs:
 
-3. How will repeat submissions and candidate updates be matched to existing HAIreX records, including candidates already imported from iCIMS?
+**Power Automate requirements**
 
+1. **Candidate pickup and data:** Please provide the PH action/state codes, request parameters and sample responses for `GET /api/Candidates/allByState`, `GET /api/Candidates/{id}` and, where required, `GET /api/CandidateRequisition/candidate/{candidateId}`. Responses should include the required candidate details/form answers, lead ID, target requisition and existing iCIMS Person/application IDs.
 
+2. **Actions and processing conditions:** For candidate registration, requisition linking and application updates, please map each HAIreX pickup code to the exact iCIMS action, mandatory fields and target status. Include the stages following Yellow/Hallo results and recruitment completion. Please clarify when each record becomes ready for the scheduled bot to process.
 
+3. **Save IDs and report completion:** Please provide the supported HAIreX endpoint and request/response for saving newly created iCIMS Person/application IDs. For `PUT /api/Leads/UpdateStateById`, please confirm the success/failure payload, acknowledgement and resulting HAIreX state.
 
+4. **iCIMS candidate import:** For `POST /api/ManualCandidates`, please confirm the PH report population, field mapping and sample request/response, including candidate–requisition association and handling of existing or updated records.
 
+5. **Requisition synchronisation:** Please confirm how `POST /api/WaveRequestFromIcims/SaveBatch` handles updated requisitions and repeated submissions. We need the response identifying accepted/failed records and the successfully processed date/time window for subsequent runs.
 
+6. **Scheduling:** Please provide the required turnaround time and expected normal/peak volume for each activity so we can configure recurrence and processing capacity.
 
+**TapTalent.ai — dependencies on Power Automate**
 
+Please identify any activity our team must implement to support TapTalent, such as supplying requisition data. For candidate processing, our bots will retrieve information through **HAIreX APIs**. Please ensure TapTalent-sourced candidate details, form answers, requisition references and processing status are available through those interfaces, and identify any additional action assigned to our team.
 
+**Development update — iCIMS job requisitions to HAIreX**
 
-Overall Power Automate implementation — for HAIreX and the Philippines team
+The current automation to fetch existing requisitions from iCIMS and post their data to HAIreX is mostly complete and will be delivered by **16 September 2026**. This delivery is separate from the upcoming candidate automation work above.
 
+Please share your review and the required API contracts and mappings so we can finalise the implementation.
 
-1. **Read candidates for iCIMS processing:** For `GET /api/Candidates/allByState`, `GET /api/Candidates/{id}` and, where needed, `GET /api/CandidateRequisition/candidate/{candidateId}`, please provide the PH pickup codes and sample responses containing the required candidate details, lead ID, target requisition and existing iCIMS IDs.
-
-2. **Save newly created iCIMS IDs:** Please provide the endpoint and request/response for saving the iCIMS Person ID and application/workflow ID against the HAIreX candidate, lead and requisition. A supported PH route has not been identified; if unavailable, this capability needs to be added or extended.
-
-3. **Update iCIMS and report the result:** For each PH action assigned to PAD, please provide the exact iCIMS status/fields to update and the success/failure request and response for `PUT /api/Leads/UpdateStateById`, including the resulting HAIreX state.
-
-4. **Import existing iCIMS candidates:** Please confirm the PH report population and field mapping for `POST /api/ManualCandidates`, with a sample request/response showing the candidate/job association and how existing records are handled.
-
-5. **Yellow and Hallo responsibilities:** Who initiates the PH Hallo assessment—HAIreX, Yellow through `POST /api/Hallo/send-assessment`, or Yellow directly to Hallo? Please identify any initiation or result-handling step still assigned to Power Automate beyond the mapped iCIMS updates.
-
-6. **Scheduling:** What turnaround time must the assigned import and iCIMS update actions meet, so we can set the recurrence and processing capacity?
+Thanks,  
+Avinash
