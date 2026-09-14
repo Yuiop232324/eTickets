@@ -1,0 +1,31 @@
+TapTalent integration — for TapTalent and HAIreX
+
+1. Please share the final PH candidate payload, the HAIreX receiving endpoint and the condition that triggers delivery. Include the candidate’s form answers and requisition reference.
+
+2. After TapTalent delivery, will HAIreX create/link the candidate, lead and requisition and make the record ready for our iCIMS bot? Please identify any additional step required from Power Automate.
+
+3. How will repeat submissions and candidate updates be matched to existing HAIreX records, including candidates already imported from iCIMS?
+
+
+
+
+
+
+
+
+
+
+Overall Power Automate implementation — for HAIreX and the Philippines team
+
+
+1. **Read candidates for iCIMS processing:** For `GET /api/Candidates/allByState`, `GET /api/Candidates/{id}` and, where needed, `GET /api/CandidateRequisition/candidate/{candidateId}`, please provide the PH pickup codes and sample responses containing the required candidate details, lead ID, target requisition and existing iCIMS IDs.
+
+2. **Save newly created iCIMS IDs:** Please provide the endpoint and request/response for saving the iCIMS Person ID and application/workflow ID against the HAIreX candidate, lead and requisition. A supported PH route has not been identified; if unavailable, this capability needs to be added or extended.
+
+3. **Update iCIMS and report the result:** For each PH action assigned to PAD, please provide the exact iCIMS status/fields to update and the success/failure request and response for `PUT /api/Leads/UpdateStateById`, including the resulting HAIreX state.
+
+4. **Import existing iCIMS candidates:** Please confirm the PH report population and field mapping for `POST /api/ManualCandidates`, with a sample request/response showing the candidate/job association and how existing records are handled.
+
+5. **Yellow and Hallo responsibilities:** Who initiates the PH Hallo assessment—HAIreX, Yellow through `POST /api/Hallo/send-assessment`, or Yellow directly to Hallo? Please identify any initiation or result-handling step still assigned to Power Automate beyond the mapped iCIMS updates.
+
+6. **Scheduling:** What turnaround time must the assigned import and iCIMS update actions meet, so we can set the recurrence and processing capacity?
